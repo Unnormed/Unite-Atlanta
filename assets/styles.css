@@ -464,3 +464,10 @@ body.post-page ::selection{background:var(--ink);color:var(--lime)}
 /* ============ SUBPAGES: admin ============ */
 body.admin-page{background:var(--paper)}
 body.admin-page #admin{position:fixed;inset:0}
+
+/* ============ TICKET ============ */
+.ticket{border:3px solid var(--ink);padding:18px;background:#fff;margin-top:16px}
+.tk-top{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:2px dashed var(--ink);padding-bottom:14px;flex-wrap:wrap}
+.tk-l{font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;opacity:.55}
+.tk-name{font-family:var(--font-display);font-size:24px;text-transform:uppercase;line-height:1}
+.tk-code{font-family:var(--font-mono);font-weight:700;font-size:15px;letter-spacing:.22em;border:2px solid var(--ink);padding:9px 13px;background:var(--lime)}

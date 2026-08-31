@@ -7,8 +7,8 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<"
 /* ---- store: demo persistence in this browser ---- */
 const KEY = "ua-store-v1";
 function loadStore(){
-  try{ return Object.assign({submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{}}, JSON.parse(localStorage.getItem(KEY)||"{}")); }
-  catch(e){ return {submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{}}; }
+  try{ return Object.assign({submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[]}, JSON.parse(localStorage.getItem(KEY)||"{}")); }
+  catch(e){ return {submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[]}; }
 }
 function saveStore(st){ try{ localStorage.setItem(KEY, JSON.stringify(st)); }catch(e){} }
 let ST = loadStore();
@@ -16,7 +16,7 @@ window.UA_STORE = { load: loadStore, save: saveStore };
 
 const SETTINGS = () => Object.assign({}, D.settings, ST.settings);
 const EVENTS = () => D.events.concat(ST.approvedEvents);
-const RSVPS = id => (D.rsvps[id]||0) + (ST.rsvps[id]||0);
+const RSVPS = id => (Array.isArray(ST.rsvps[id]) ? ST.rsvps[id].length : 0);
 
 const TYPES = {
   mixer:{label:"Mixer",bg:"#D7F204",fg:"#0D0D0D"},
@@ -55,7 +55,7 @@ function renderNextUp(){
       <span class="nu-go">→</span>
     </button>`;
   }).join("");
-  $("#statEvents").textContent = EVENTS().length;
+  const se = $("#statEvents"); if(se) se.textContent = EVENTS().length;
 }
 
 /* ---- calendar ---- */
@@ -129,23 +129,22 @@ function renderBackroom(){
     const dt = evDate(e);
     return `<div class="br-evt">
       <span class="bd">${String(dt.getDate()).padStart(2,"0")}<small>${MONTH_SHORT[dt.getMonth()]}</small></span>
-      <span class="bt">${esc(e.title)}<small>${esc(e.venue)} · ${e.t} ET · ${RSVPS(e.id)} on the list</small></span>
-      <button class="rsvp-btn" onclick="brRsvp(this,'${e.id}')">RSVP</button>
+      <span class="bt">${esc(e.title)}<small>${esc(e.venue)} · ${e.t} ET${RSVPS(e.id)?` · ${RSVPS(e.id)} on the list`:""}</small></span>
+      <button class="rsvp-btn" onclick="openEvent('${e.id}')">RSVP</button>
     </div>`;
   }).join("") || `<div class="br-evt"><span class="bt" style="padding:16px">Nothing scheduled behind the code right now.</span></div>`;
   $("#brRotates").textContent = SETTINGS().codeRotates;
 }
-window.brRsvp = function(btn,id){
-  ST.rsvps[id] = (ST.rsvps[id]||0)+1; saveStore(ST);
-  btn.textContent = "On the list ✓"; btn.disabled = true;
-};
+
 
 /* ---- speaks ---- */
 function renderSpeaks(){
-  const pubs = D.speaks.filter(p => (ST.speaksStatus[p.id]||p.status) === "published");
-  $("#voicesWrap").innerHTML = pubs.map(p=>`<div class="voice">
-      ${p.img?`<a class="vph" href="/speaks/${p.slug}"><img src="${p.img}" alt="Portrait for ${esc(p.name)}"></a>`:""}
-      <a class="vq" href="/speaks/${p.slug}">
+  const builtIn = D.speaks.filter(p => (ST.speaksStatus[p.id]||p.status) === "published").map(p=>({p, href:"/speaks/"+p.slug}));
+  const custom = (ST.customPosts||[]).filter(p=>p.status==="published").map(p=>({p, href:"/speaks/post?id="+p.id}));
+  const pubs = builtIn.concat(custom);
+  $("#voicesWrap").innerHTML = pubs.map(({p, href})=>`<div class="voice">
+      ${p.img?`<a class="vph" href="${href}"><img src="${p.img}" alt="Portrait for ${esc(p.name)}"></a>`:""}
+      <a class="vq" href="${href}">
         <p>&ldquo;${esc(p.quote)}&rdquo;</p>
         <cite>${esc(p.name)} · ${esc(p.role)}</cite>
         <span class="rm">Read more ↗</span>
@@ -158,7 +157,6 @@ window.openEvent = function(id){
   const e = evById(id); if(!e) return;
   const dt = evDate(e), c = tOf(e);
   const locked = e.tier==="plus" && !plusActive;
-  const n = RSVPS(e.id);
   $("#eventModalBody").innerHTML = `
     <p class="m-cat"><span style="${css(e)}">${c.label}</span>${e.tier==="plus"?`<span class="plus-tag">Plus ■ code required</span>`:`<span>Open to the city</span>`}</p>
     <h3>${esc(e.title)}</h3>
@@ -168,19 +166,69 @@ window.openEvent = function(id){
       <div><span>Time</span><span>${e.t} ET</span></div>
       <div><span>Venue</span><span>${locked?"Revealed to code holders":esc(e.venue)}</span></div>
       ${e.social?`<div><span>Social</span><span><a href="${esc(e.social)}" target="_blank" rel="noopener" style="text-decoration:underline">${esc(e.social)}</a></span></div>`:""}
-      ${n?`<div><span>List</span><span>${n} people going</span></div>`:""}
     </div>
     <p class="m-desc">${esc(e.desc)}</p>
     ${locked
       ? `<div class="m-lockbox"><p>This room is behind the code</p><button class="btn-lime" onclick="closeModal('eventModal');document.getElementById('plus').scrollIntoView({behavior:'smooth'})">I have the code ↗</button></div>`
-      : `<div style="margin-top:22px"><button class="btn-ink" onclick="rsvp(this,'${e.id}')">RSVP${e.tier==="plus"?" · Plus":""} ↗</button></div>`}
+      : `<div style="margin-top:22px"><button class="btn-ink" onclick="startRsvp('${e.id}')">RSVP ↗</button></div>`}
   `;
   openModal("eventModal");
 };
-window.rsvp = function(btn,id){
-  ST.rsvps[id] = (ST.rsvps[id]||0)+1; saveStore(ST);
-  btn.textContent = "You're on the list."; btn.disabled = true; btn.style.opacity = ".65";
+function ticketCode(){ return "UA-" + Math.random().toString(36).slice(2,6).toUpperCase(); }
+function icsFor(e){
+  const [h,m] = e.t.split(":").map(Number);
+  const st = new Date(e.d+"T00:00:00"); st.setHours(h,m);
+  const en = new Date(st.getTime()+2*3600*1000);
+  const f = d => d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+"T"+String(d.getHours()).padStart(2,"0")+String(d.getMinutes()).padStart(2,"0")+"00";
+  const body = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Unite Atlanta//EN","BEGIN:VEVENT","UID:"+e.id+"@unite-atlanta","DTSTAMP:"+f(new Date()),"DTSTART:"+f(st),"DTEND:"+f(en),"SUMMARY:"+e.title.replace(/,/g,"\\,"),"LOCATION:"+String(e.venue||"").replace(/,/g,"\\,"),"END:VEVENT","END:VCALENDAR"].join("\r\n");
+  return "data:text/calendar;charset=utf-8," + encodeURIComponent(body);
+}
+window.startRsvp = function(id){
+  const e = evById(id); if(!e) return;
+  const c = tOf(e);
+  $("#eventModalBody").innerHTML = `
+    <p class="m-cat"><span style="${css(e)}">${c.label}</span><span>RSVP</span></p>
+    <h3>${esc(e.title)}</h3>
+    <p class="m-desc">Leave your name and email. Your ticket appears right here. Show it at the door.</p>
+    <form id="rsvpForm">
+      <div class="row">
+        <label>Your name<input required name="name"></label>
+        <label>Email<input required type="email" name="email"></label>
+      </div>
+      <button class="btn-ink" type="submit">Confirm RSVP ↗</button>
+    </form>`;
+  $("#rsvpForm").addEventListener("submit",ev=>{
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    const entry = { name:String(f.get("name")), email:String(f.get("email")), code:ticketCode(), ts:new Date().toISOString().slice(0,10) };
+    if(!Array.isArray(ST.rsvps[id])) ST.rsvps[id] = [];
+    ST.rsvps[id].push(entry); saveStore(ST);
+    showTicket(e, entry);
+    renderBackroom();
+  });
 };
+function showTicket(e, entry){
+  const dt = evDate(e), c = tOf(e);
+  $("#eventModalBody").innerHTML = `
+    <p class="m-cat"><span style="${css(e)}">${c.label}</span><span class="plus-tag">Confirmed ✓</span></p>
+    <div class="ticket">
+      <div class="tk-top">
+        <div><span class="tk-l">Admit one</span><div class="tk-name">${esc(entry.name)}</div></div>
+        <div class="tk-code">${entry.code}</div>
+      </div>
+      <h3 style="margin:14px 0 4px">${esc(e.title)}</h3>
+      <div class="m-meta">
+        <div><span>Date</span><span>${DAYS_L[dt.getDay()]} ${MONTH_NAMES[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}</span></div>
+        <div><span>Time</span><span>${e.t} ET</span></div>
+        <div><span>Venue</span><span>${esc(e.venue)}</span></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn-lime" href="${icsFor(e)}" download="${e.id}-unite-atlanta.ics">Add to calendar</a>
+        <button class="btn-ink" onclick="closeModal('eventModal')">Done</button>
+      </div>
+      <p class="m-desc" style="margin-top:14px;opacity:.6">Screenshot this or show it at the door. Demo build: your ticket is stored in this browser, no confirmation email is sent yet.</p>
+    </div>`;
+}
 
 /* ---- modals ---- */
 window.openModal = function(id){ document.getElementById(id).classList.add("open"); document.body.style.overflow="hidden"; };
@@ -251,7 +299,6 @@ $("#mailForm").addEventListener("submit",ev=>{
 });
 
 /* ---- ambient ---- */
-const track = $("#marqueeTrack"); track.innerHTML += track.innerHTML;
 const io = new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){en.target.classList.add("on");io.unobserve(en.target);}})},{threshold:.1});
 document.querySelectorAll(".rv").forEach(el=>io.observe(el));
 

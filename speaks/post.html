@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlanta Speaks · Unite Atlanta</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%230D0D0D%22/><text y=%2274%22 x=%2250%22 text-anchor=%22middle%22 font-family=%22Arial Black%22 font-size=%2260%22 fill=%22%23D7F204%22>UA</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,500;0,700;0,900;1,400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;1,6..96,400;1,6..96,600&family=IBM+Plex+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body class="post-page">
+
+<nav>
+  <div class="nav-in">
+    <a class="nav-brand" href="/"><span class="dot"></span>Unite Atlanta</a>
+    <div class="nav-links">
+      <a href="/#calendar">Calendar</a>
+      <a href="/#mission" class="hideable">Mission</a>
+      <a href="/#plus" class="hideable">Plus</a>
+      <a href="/#speaks" class="hideable">Speaks</a>
+      <a class="nav-submit" href="/#calendar" style="text-decoration:none">The calendar ↗</a>
+    </div>
+  </div>
+</nav>
+
+<main id="postMain"></main>
+
+<footer>
+  <div class="foot-mast" aria-hidden="true">UNITE<em>ATL</em>ANTA</div>
+  <div class="foot-bar">
+    <div class="fl">
+      <a href="/#calendar">Calendar</a><a href="/#mission">Mission</a><a href="/#plus">Plus</a><a href="/#speaks">Speaks</a>
+      <a href="/admin">Backend ↗</a>
+    </div>
+    <p>Concept v4 · sample programming for review · ATL, GA · est. 2025</p>
+  </div>
+</footer>
+
+<script src="/assets/data.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let store = {customPosts:[]};
+try{ store = Object.assign(store, JSON.parse(localStorage.getItem("ua-store-v1")||"{}")); }catch(e){}
+const id = new URLSearchParams(location.search).get("id");
+const post = (store.customPosts||[]).find(p=>p.id===id) || window.UA_DATA.speaks.find(p=>p.id===id);
+
+if(!post){
+  $("#postMain").innerHTML = `
+  <header class="post-hero"><div class="wrap">
+    <div class="post-kicker"><span class="stamp">Atlanta Speaks</span></div>
+    <h1 class="post-title">This story isn't here.</h1>
+  </div></header>
+  <div class="wrap"><div class="post-layout"><article class="post-body">
+    <p>Posts written in the backend live in the browser they were written in (demo build). If someone sent you this link, ask them for the text, or read the editorial pieces below.</p>
+    <a class="btn-back" href="/#speaks">← Back to the journal</a>
+  </article></div></div>`;
+  document.title = "Atlanta Speaks · Unite Atlanta";
+} else {
+  document.title = esc(post.name) + " · Atlanta Speaks";
+  const draft = post.status !== "published" ? '<span class="stamp red">Draft · not yet published</span>' : "";
+  $("#postMain").innerHTML = `
+  <header class="post-hero"><div class="wrap">
+    <div class="post-kicker"><span class="stamp">Atlanta Speaks</span><span class="stamp">${esc(post.date)}</span>${draft}</div>
+    <h1 class="post-title">${esc(post.title)}</h1>
+    <div class="post-byline">
+      ${post.img?`<img src="${post.img}" alt="Portrait for ${esc(post.name)}">`:""}
+      <div><div class="bn">${esc(post.name)}</div><div class="br">${esc(post.role)}</div></div>
+    </div>
+  </div></header>
+  <div class="wrap"><div class="post-layout">
+    <article class="post-body">
+      ${post.body.map(p=>`<p>${esc(p)}</p>`).join("")}
+      <a class="btn-back" href="/#speaks">← Back to the journal</a>
+    </article>
+    <aside class="post-side">
+      <div class="post-pull">&ldquo;${esc(post.quote)}&rdquo;</div>
+      <div class="side-box">
+        <h4>About Atlanta Speaks</h4>
+        <p>Opinion pieces from the people who make this city sound like itself.</p>
+      </div>
+      <div class="side-box">
+        <h4>On the calendar</h4>
+        <p>The conversation continues in the rooms. <a href="/#calendar">See what&rsquo;s next in the city.</a></p>
+      </div>
+    </aside>
+  </div></div>`;
+}
+</script>
+</body>
+</html>

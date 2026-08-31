@@ -43,8 +43,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const KEY = "ua-store-v1";
 function loadStore(){
-  try{ return Object.assign({submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{}}, JSON.parse(localStorage.getItem(KEY)||"{}")); }
-  catch(e){ return {submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{}}; }
+  try{ return Object.assign({submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[]}, JSON.parse(localStorage.getItem(KEY)||"{}")); }
+  catch(e){ return {submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[]}; }
 }
 let ST = loadStore();
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(ST)); setSave("Saved · demo storage in this browser","ok"); }catch(e){ setSave("Could not save","err"); } }
@@ -64,8 +64,10 @@ function allSubs(){
   return base.concat(ST.submissions.map(s => Object.assign({}, s, {status: ST.handled[s.id] || s.status})));
 }
 function speaksAll(){ return D.speaks.map(p => Object.assign({}, p, {status: ST.speaksStatus[p.id] || p.status})); }
+function customPosts(){ return ST.customPosts || []; }
 function allEvents(){ return D.events.concat(ST.approvedEvents); }
-function rsvpOf(id){ return (D.rsvps[id]||0) + (ST.rsvps[id]||0); }
+function rsvpOf(id){ return Array.isArray(ST.rsvps[id]) ? ST.rsvps[id].length : 0; }
+function rsvpEntries(id){ return Array.isArray(ST.rsvps[id]) ? ST.rsvps[id] : []; }
 
 /* gate */
 try{ if(sessionStorage.getItem("ua-admin")==="1"){ $("#adminGate").classList.remove("open"); $("#admin").classList.add("open"); } }catch(e){}
@@ -82,12 +84,14 @@ $("#gateForm").addEventListener("submit",ev=>{
 let admTab = "overview";
 function renderAdmin(){
   const pending = allSubs().filter(s=>s.status==="pending").length;
-  const tabs = [["overview","Overview",0],["submissions","Submissions",pending],["speaks","Atlanta Speaks",0],["subscribers","Subscribers",0],["settings","Settings",0]];
+  let rsvpTotal = 0; Object.keys(ST.rsvps).forEach(id=> rsvpTotal += rsvpOf(id));
+  const tabs = [["overview","Overview",0],["submissions","Submissions",pending],["rsvps","RSVPs",rsvpTotal],["speaks","Atlanta Speaks",0],["subscribers","Subscribers",0],["settings","Settings",0]];
   $("#admTabs").innerHTML = tabs.map(([k,l,b])=>`<button class="${admTab===k?"on":""}" data-t="${k}">${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("");
   document.querySelectorAll("#admTabs button").forEach(b=>b.addEventListener("click",()=>{admTab=b.dataset.t;renderAdmin();}));
   const body = $("#admBody");
   if(admTab==="overview") body.innerHTML = admOverview();
   if(admTab==="submissions") body.innerHTML = admSubmissions();
+  if(admTab==="rsvps") body.innerHTML = admRsvps();
   if(admTab==="speaks") body.innerHTML = admSpeaks();
   if(admTab==="subscribers") body.innerHTML = admSubscribers();
   if(admTab==="settings") body.innerHTML = admSettings();
@@ -96,8 +100,7 @@ function admOverview(){
   const pending = allSubs().filter(s=>s.status==="pending").length;
   const pubs = speaksAll().filter(p=>p.status==="published").length;
   const subs = D.subscribers.length + ST.subscribers.length;
-  const ids = new Set(Object.keys(D.rsvps).concat(Object.keys(ST.rsvps)));
-  let total = 0; ids.forEach(id=> total += rsvpOf(id));
+  let total = 0; Object.keys(ST.rsvps).forEach(id=> total += rsvpOf(id));
   const top = allEvents().map(e=>({e,n:rsvpOf(e.id)})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
   return `
     <div class="adm-grid">
@@ -149,15 +152,93 @@ function admApprove(id){
   save(); renderAdmin();
 }
 function admReject(id){ ST.handled[id] = "rejected"; save(); renderAdmin(); }
+function admRsvps(){
+  const withRsvps = allEvents().map(e=>({e, entries: rsvpEntries(e.id)})).filter(x=>x.entries.length>0);
+  if(!withRsvps.length) return '<h3 class="adm-h" style="margin-top:0">Guest lists</h3><p class="adm-note" style="margin-top:0">No RSVPs yet. Every RSVP made on this site (in this browser) lands here with name, email and ticket code.</p>';
+  return '<h3 class="adm-h" style="margin-top:0">Guest lists</h3>' + withRsvps.map(({e,entries})=>`
+    <h3 class="adm-h" style="font-size:19px">${esc(e.title)} <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.1em">· ${e.d} · ${entries.length} on the list</span></h3>
+    <div class="adm-rows">${entries.map(r=>`<div class="adm-row"><span class="ar-t">${esc(r.name)}<small>${esc(r.email)}</small></span><span class="st pub">${esc(r.code)}</span><span class="st">${esc(r.ts)}</span></div>`).join("")}</div>`).join("");
+}
 function admSpeaks(){
-  return `<h3 class="adm-h" style="margin-top:0">Posts</h3>
+  const customRows = customPosts().map(p=>`<div class="adm-row">
+      <span class="ar-t">${esc(p.title)}<small>${esc(p.name)} · ${esc(p.role)} · ${esc(p.date)}</small></span>
+      <span class="st ${p.status==="published"?"pub":"dft"}">${p.status}</span>
+      <button class="mini" onclick="admToggleCustom('${p.id}')">${p.status==="published"?"Unpublish":"Publish"}</button>
+      <a class="mini" style="text-decoration:none" href="/speaks/post?id=${p.id}" target="_blank" rel="noopener">View page</a>
+      <button class="mini" style="background:var(--scarlet)" onclick="admDeleteCustom('${p.id}')">Delete</button>
+    </div>`).join("");
+  return `<h3 class="adm-h" style="margin-top:0">Write a new post</h3>
+    <div class="sub-card" style="padding:16px">
+      <form id="newPostForm" style="display:flex;flex-direction:column;gap:12px" onsubmit="admCreatePost(event)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Author name<input required name="name" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Role / neighborhood<input required name="role" placeholder="DJ · West End" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px"></label>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Title<input required name="title" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px"></label>
+        <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Pull quote (one sentence)<input required name="quote" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px"></label>
+        <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Article (blank line = new paragraph)<textarea required name="body" rows="8" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px;resize:vertical"></textarea></label>
+        <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Portrait (optional)<input type="file" id="postImg" accept="image/*" style="border:2px solid var(--ink);padding:8px;font-family:var(--font-mono);font-size:11px"></label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="mini2" style="margin-top:0" type="submit" name="pub" value="published">Publish now</button>
+          <button class="mini" type="submit" name="pub" value="draft">Save as draft</button>
+        </div>
+      </form>
+    </div>
+    ${customRows?`<h3 class="adm-h">Your posts</h3><div class="adm-rows">${customRows}</div>`:""}
+    <h3 class="adm-h">Editorial posts</h3>
     <div class="adm-rows">${speaksAll().map(p=>`<div class="adm-row">
       <span class="ar-t">${esc(p.title)}<small>${esc(p.name)} · ${esc(p.role)} · ${esc(p.date)}</small></span>
       <span class="st ${p.status==="published"?"pub":"dft"}">${p.status}</span>
       <button class="mini" onclick="admTogglePost('${p.id}')">${p.status==="published"?"Unpublish":"Publish"}</button>
       <a class="mini" style="text-decoration:none" href="/speaks/${p.slug}" target="_blank" rel="noopener">View page</a>
     </div>`).join("")}</div>
-    <p class="adm-note">Published posts appear in the Atlanta Speaks journal on the homepage. Every post has its own page at /speaks/&lt;name&gt;.</p>`;
+    <p class="adm-note">Published posts appear in the Atlanta Speaks journal on the homepage, each with its own page. Posts you write here are stored in this browser (demo); the production build moves them to a real database.</p>`;
+}
+let postImgUri = null;
+document.addEventListener("change", ev=>{
+  if(ev.target && ev.target.id === "postImg"){
+    const f = ev.target.files && ev.target.files[0]; if(!f) return;
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 900, scale = Math.min(1, maxW/img.width);
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width*scale); cv.height = Math.round(img.height*scale);
+      cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+      postImgUri = cv.toDataURL("image/jpeg",.72);
+    };
+    img.src = URL.createObjectURL(f);
+  }
+});
+function admCreatePost(ev){
+  ev.preventDefault();
+  const f = new FormData(ev.target);
+  const status = (ev.submitter && ev.submitter.value) || "draft";
+  const MONTH_SHORT = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const now = new Date();
+  const paras = String(f.get("body")).split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
+  ST.customPosts = customPosts();
+  ST.customPosts.unshift({
+    id: "c"+Date.now(), name:String(f.get("name")), role:String(f.get("role")),
+    title:String(f.get("title")), quote:String(f.get("quote")), body: paras,
+    img: postImgUri, status,
+    date: status==="published" ? MONTH_SHORT[now.getMonth()]+" "+now.getDate()+", "+now.getFullYear() : "UNPUBLISHED"
+  });
+  postImgUri = null;
+  save(); renderAdmin();
+}
+function admToggleCustom(id){
+  const p = customPosts().find(x=>x.id===id); if(!p) return;
+  p.status = p.status==="published" ? "draft" : "published";
+  if(p.status==="published" && p.date==="UNPUBLISHED"){
+    const MONTH_SHORT = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+    const now = new Date();
+    p.date = MONTH_SHORT[now.getMonth()]+" "+now.getDate()+", "+now.getFullYear();
+  }
+  save(); renderAdmin();
+}
+function admDeleteCustom(id){
+  ST.customPosts = customPosts().filter(x=>x.id!==id);
+  save(); renderAdmin();
 }
 function admTogglePost(id){
   const p = speaksAll().find(x=>x.id===id); if(!p) return;
