@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unite Atlanta</title>
+<meta name="description" content="One calendar, one community, one voice for Atlanta's music scene.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%230D0D0D%22/><text y=%2274%22 x=%2250%22 text-anchor=%22middle%22 font-family=%22Arial Black%22 font-size=%2260%22 fill=%22%23D7F204%22>UA</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,500;0,700;0,900;1,400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,700;1,6..96,400;1,6..96,600&family=IBM+Plex+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<script src="/assets/data.js"></script>
+
+
+<nav>
+  <div class="nav-in">
+    <a class="nav-brand" href="#top"><span class="dot"></span>Unite Atlanta<span class="plus-badge">PLUS</span></a>
+    <div class="nav-links">
+      <a href="#calendar">Calendar</a>
+      <a href="#mission" class="hideable">Mission</a>
+      <a href="#plus" class="hideable">Plus</a>
+      <a href="#backroom" class="br-link">Back Room</a>
+      <a href="#legacy" class="hideable">Legacy</a>
+      <a href="#speaks" class="hideable">Speaks</a>
+      <button class="nav-submit" onclick="openModal('submitModal')">Submit event ↗</button>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+
+<header class="hero">
+  <div class="hero-grid">
+    <div class="hero-left">
+      <div class="hero-topline">
+        <span class="mono-tag">ATL · GA · The culture's hometown</span>
+        <span class="mono-tag" id="todayStamp">FRI 28.08.2026</span>
+      </div>
+      <h1 class="masthead d-h">
+        <span class="row"><span class="fill">UNITE</span><span class="arrow">↗</span></span>
+        <span class="row"><span class="out">ATLANTA</span></span>
+      </h1>
+      <div>
+        <p style="max-width:52ch;font-size:clamp(15px,1.4vw,17px);font-weight:500;color:var(--paper-dim)">
+          The city that made the sound finally has <strong style="color:var(--paper)">one calendar</strong>.
+          Every panel, every listening session, every move. So nobody in this town ever says
+          <em class="serif-i" style="color:var(--lime)">&ldquo;dang, I didn&rsquo;t even know&rdquo;</em> again.
+        </p>
+        <div class="hero-state" style="margin-top:22px">
+          <div><span class="k">Events this season</span><div class="v lm" id="statEvents">18</div></div>
+          <div><span class="k">Format</span><div class="v">1st Wednesdays</div></div>
+          <div><span class="k">Access</span><div class="v">Open + Plus</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-photo">
+        <img src="/img/crowd.webp" alt="Concert crowd in an Atlanta club, hands raised, black and white">
+        <span class="cap">Somewhere in ATL · last night</span>
+      </div>
+      <div class="nextup">
+        <div class="nextup-head">
+          <span class="d-h">Next up</span>
+          <span class="live"><i></i>Live calendar</span>
+        </div>
+        <div id="nextUpRows"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track" id="marqueeTrack">
+    <span>Panels<i>●</i></span><span>Listening sessions<i>●</i></span><span>First Wednesdays<i>●</i></span><span>Performances<i>●</i></span><span>Civic briefings<i>●</i></span><span>Legacy nights<i>●</i></span><span>Wine Down Wednesday<i>●</i></span><span>Black Music Week<i>●</i></span>
+  </div>
+</div>
+
+<section id="calendar">
+  <div class="wrap">
+    <div class="cal-head rv">
+      <h2 class="d-h">The <span class="serif-i">calendar</span></h2>
+      <p class="side">The heart of the platform. The community submits, the calendar tells the city. Color = type. Black = behind the code.</p>
+    </div>
+    <div class="legend rv" id="legendBar"></div>
+    <div class="cal-shell grid-mode rv" id="calShell">
+      <div class="cal-toolbar">
+        <div class="month-tabs" id="monthTabs"></div>
+        <div class="view-toggle">
+          <button id="vGrid" class="on">Grid</button>
+          <button id="vList">List</button>
+        </div>
+      </div>
+      <div class="filters" id="filterBar"></div>
+      <div class="cal-grid-head"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-list" id="calList"></div>
+      <div class="cal-empty" id="calEmpty">Nothing on the books. Yet.</div>
+      <div class="cal-foot">
+        <p>Something missing? That's literally the problem we exist to solve.</p>
+        <button onclick="openModal('submitModal')">Put it on the calendar ↗</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="mission">
+  <div class="wrap">
+    <p class="mono-tag rv" style="color:var(--paper-dim)">■ Why we exist · proposals on the table</p>
+    <h2 class="man-state rv">
+      Atlanta runs the culture.<br>
+      Nobody ran <span class="serif-i">its calendar.</span>
+    </h2>
+    <div class="man-body">
+      <div class="man-copy rv">
+        <p>Every week this city makes history, and half of it goes unseen. <strong>Even by the people making it.</strong> Deals close and nobody addresses the community. Festivals vanish and nobody explains why. Events collide because nobody knew.</p>
+        <p>Unite Atlanta is not another organization. It's the infrastructure the scene never had: <strong>one calendar, one archive, one voice</strong>. Built by the community it serves, starting with music, starting now.</p>
+      </div>
+      <div class="mv-stack rv">
+        <div class="mv-card" data-v="Proposal v1">
+          <h3>Mission</h3>
+          <p>We make Atlanta&rsquo;s music community visible to itself: every event in one place, every win shared, every story preserved.</p>
+        </div>
+        <div class="mv-card" data-v="Proposal v1">
+          <h3>Vision</h3>
+          <p>A city where the culture is coordinated, its history is protected, and its voice is impossible to ignore.</p>
+        </div>
+        <div class="mv-card" data-v="Proposal v1">
+          <h3>Positioning</h3>
+          <p>The room where Atlanta&rsquo;s music community meets itself.</p>
+        </div>
+      </div>
+    </div>
+    <div class="pillars">
+      <div class="pillar rv" style="--pc:var(--lime)">
+        <div class="num">01</div>
+        <h3 class="d-h">The Room</h3>
+        <span class="tag">Unity</span>
+        <p>One calendar for a scattered city. Promoters, executives, artists and organizers see each other&rsquo;s moves before they collide, and show up for each other instead of competing on the same night.</p>
+        <blockquote>&ldquo;It is by happenstance that most people get together. Let&rsquo;s be intentional about that.&rdquo;</blockquote>
+      </div>
+      <div class="pillar rv" style="--pc:var(--amber)">
+        <div class="num">02</div>
+        <h3 class="d-h">The Record</h3>
+        <span class="tag">Legacy</span>
+        <p>Atlanta&rsquo;s music history is still walking around this city, and nobody is writing it down. We memorialize what happened, document what&rsquo;s happening, and teach it forward.</p>
+        <blockquote>&ldquo;Either we preserve our history, or someone else erases it.&rdquo;</blockquote>
+      </div>
+      <div class="pillar rv" style="--pc:var(--peri)">
+        <div class="num">03</div>
+        <h3 class="d-h">The Voice</h3>
+        <span class="tag">Influence</span>
+        <p>When legislation, elections or industry shifts touch this community, there was never a way to call the room together. An organized Atlanta is an Atlanta that gets heard.</p>
+        <blockquote>&ldquo;We must be active participants, not acted upon.&rdquo;</blockquote>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="plus">
+  <div class="plus-grid">
+    <div class="plus-photo">
+      <img src="/img/plusroom.webp" alt="Dim private listening session, black and white">
+      <span class="stamp ph-tag">Members only</span>
+      <div class="bigword">Plus</div>
+    </div>
+    <div class="plus-right">
+      <p class="mono-tag" style="color:var(--paper-dim)">■ Membership</p>
+      <h2 class="d-h" style="margin-top:14px">Two doors.<br><span class="serif-i">One house.</span></h2>
+      <p class="intro">The calendar is for the whole city. The back room isn&rsquo;t. Plus keeps high-profile gatherings off the radar and on the calendar at the same time, protected by a code that rotates quarterly and moves hand to hand. Never posted.</p>
+      <div class="tiers">
+        <div class="tier">
+          <h3>Unite Atlanta <span class="stamp">Open</span></h3>
+          <ul>
+            <li>The full public calendar</li>
+            <li>Submit your own events</li>
+            <li>The weekly digest email</li>
+            <li>Legacy stories &amp; Atlanta Speaks</li>
+          </ul>
+        </div>
+        <div class="tier plus-tier">
+          <h3>Unite Atlanta Plus <span class="stamp" style="color:var(--lime)">Invitation</span></h3>
+          <ul>
+            <li>The Back Room: unlisted addresses &amp; RSVPs</li>
+            <li>The quarterly code, hand to hand</li>
+            <li>First call when the city must move as one</li>
+            <li>The card. You&rsquo;ll know when you&rsquo;re handed one.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="code-zone">
+        <form id="codeForm">
+          <input id="codeInput" placeholder="ENTER THE CODE" autocomplete="off" aria-label="Plus access code">
+          <button type="submit">Unlock</button>
+        </form>
+        <p class="code-msg" id="codeMsg">Codes rotate quarterly · ask the one who invited you</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="backroom">
+  <div class="br-grid">
+    <div class="br-left">
+      <p class="mono-tag" style="color:rgba(242,239,233,.7)">■ Plus members only</p>
+      <h2 class="d-h" style="margin-top:14px">The Back <span class="serif-i">Room.</span></h2>
+      <p class="intro">You&rsquo;re in. These are the rooms that don&rsquo;t get posted: full addresses, door protocols and RSVPs, visible only behind the code. What happens here stays here, but what starts here moves the whole city.</p>
+      <div class="br-events" id="brEvents"></div>
+      <div class="br-meta">
+        <span class="stamp">Code rotates: <span id="brRotates">01 OCT 2026</span></span>
+        <span class="stamp">Concierge: plus@unite-atl.com</span>
+      </div>
+    </div>
+    <div class="br-photo">
+      <img src="/img/backroom.webp" alt="Intimate listening session in a dark lounge, black and white">
+      <span class="cap">The listening, last quarter</span>
+    </div>
+  </div>
+</section>
+
+<section id="legacy">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="mono-tag" style="color:var(--paper-dim)">■ The record</p>
+      <h2 class="d-h" style="margin-top:14px">This city has receipts.<br><span class="serif-i">Somebody has to keep them.</span></h2>
+      <p>Atlanta&rsquo;s rise wasn&rsquo;t an accident. It was built, mayor by mayor, label by label, record by record. Most of the people who built it are still here. The archive starts while they can still tell it themselves.</p>
+    </div>
+    <div class="legacy-strip rv">
+      <div class="lph"><img src="/img/vinyl.webp" alt="Hands digging through a crate of vinyl records"><span class="stamp ph-tag">The archive</span></div>
+      <div class="lph"><img src="/img/studio.webp" alt="Producer at an analog mixing console in a dark studio"><span class="stamp ph-tag">The craft</span></div>
+    </div>
+    <div class="timeline">
+      <div class="t-row rv"><div class="yr">1973</div><div><h3>The political soil</h3><p>Maynard Jackson is elected mayor. With Andrew Young after him, a generation of Black political leadership builds the ground the culture would grow from.</p></div></div>
+      <div class="t-row rv"><div class="yr">1989</div><div><h3>The industry moves south</h3><p>L.A. Reid and Babyface set up LaFace Records in Atlanta. TLC, Toni Braxton, Usher, OutKast. The city stops sending talent away and starts signing it at home.</p></div></div>
+      <div class="t-row rv"><div class="yr">1993</div><div><h3>So So Def &amp; the home team</h3><p>Jermaine Dupri makes Atlanta a headquarters, not a stopover. A city of studios, writers and producers becomes an economy of its own.</p></div></div>
+      <div class="t-row rv"><div class="yr">1994</div><div><h3>The South got something to say</h3><p>OutKast and the Dungeon Family put Atlanta&rsquo;s voice on the national record and dare the industry to ignore it. It never could again.</p></div></div>
+      <div class="t-row rv"><div class="yr">2000s</div><div><h3>The center of gravity</h3><p>Crunk, snap, trap. For two decades running, the sound of American popular music gets made, broken and rewritten in Atlanta.</p></div></div>
+      <div class="t-row rv"><div class="yr">2013</div><div><h3>The new machine</h3><p>Quality Control is founded. Proof that Atlanta doesn&rsquo;t just make artists, it builds the companies behind them.</p></div></div>
+      <div class="t-row rv"><div class="yr">NOW</div><div><h3>The unwritten chapter</h3><p>Black Music Week. First Wednesdays. A community learning to move as one. The next entry in the record is the one we organize together.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="speaks">
+  <div class="wrap">
+    <p class="mono-tag rv" style="color:var(--paper-dim)">■ The journal · new voices weekly</p>
+    <h2 class="d-h rv" style="margin-top:14px">Atlanta <span class="serif-i">speaks.</span></h2>
+    <p class="intro rv">Opinion pieces from the people who make this city sound like itself. Producers, promoters, executives, students, legends. What&rsquo;s popping, what&rsquo;s broken, and what Atlanta means to them.</p>
+    <div class="voices rv" id="voicesWrap"></div>
+  </div>
+</section>
+
+<section id="join">
+  <div class="wrap">
+    <div class="join-box rv">
+      <div class="join-in">
+        <div>
+          <h2 class="d-h">Know <span class="lime">first.</span></h2>
+          <p class="sub">One email a week. Every event, every move, zero noise. When something new lands on the calendar, you already knew.</p>
+        </div>
+        <div class="join-form">
+          <form id="mailForm">
+            <input id="mailInput" type="email" required placeholder="your@email.com" aria-label="Email address">
+            <button type="submit">Join</button>
+          </form>
+          <p class="done" id="mailDone"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="foot-mast" aria-hidden="true">UNITE<em>ATL</em>ANTA</div>
+  <div class="foot-bar">
+    <div class="fl">
+      <a href="#calendar">Calendar</a><a href="#mission">Mission</a><a href="#plus">Plus</a><a href="#legacy">Legacy</a><a href="#speaks">Speaks</a>
+      <a href="/admin">Backend ↗</a>
+    </div>
+    <p>Concept v3 · sample programming for review · ATL, GA · est. 2025</p>
+  </div>
+</footer>
+
+
+
+<div class="modal-bg" id="eventModal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="x" onclick="closeModal('eventModal')" aria-label="Close">✕</button>
+    <div id="eventModalBody"></div>
+  </div>
+</div>
+
+<div class="modal-bg article-modal" id="articleModal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="x" onclick="closeModal('articleModal')" aria-label="Close">✕</button>
+    <div id="articleModalBody"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="submitModal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="x" onclick="closeModal('submitModal')" aria-label="Close">✕</button>
+    <p class="m-cat"><span>Submit an event</span></p>
+    <h3>Put your move on the city&rsquo;s calendar.</h3>
+    <p class="m-desc">Submissions land with the Unite Atlanta team for review before publication. Choose Plus if the address should stay behind the code.</p>
+    <form id="submitForm">
+      <div class="row">
+        <label>Your name<input required name="name"></label>
+        <label>Email<input required type="email" name="email"></label>
+      </div>
+      <label>Event title<input required name="title"></label>
+      <div class="row">
+        <label>Date<input required type="date" name="date" min="2026-08-28"></label>
+        <label>Start time<input required type="time" name="time" value="19:00"></label>
+      </div>
+      <label>Venue<input required name="venue"></label>
+      <div class="row">
+        <label>Type<select name="type"><option value="mixer">Mixer</option><option value="panel">Panel</option><option value="listening">Listening session</option><option value="performance">Performance</option><option value="civic">Civic</option><option value="legacy">Legacy</option><option value="other">Other</option></select></label>
+        <label>Listing<select name="tier"><option value="open">Open · everyone</option><option value="plus">Plus · code required</option></select></label>
+      </div>
+      <label>Event social link<input type="url" name="social" placeholder="https://instagram.com/yourevent"></label>
+      <label>Flyer / image<input type="file" id="subImg" accept="image/*"></label>
+      <div class="up-preview" id="upPreview"><img id="upPreviewImg" alt="Upload preview"></div>
+      <label>Tell us about it<textarea rows="3" name="desc"></textarea></label>
+      <button class="btn-ink" type="submit" id="subBtn">Send for review ↗</button>
+    </form>
+    <div class="form-done" id="submitDone">
+      <p>Received.</p>
+      <small id="submitDoneNote">The team reviews &amp; publishes within 48 hours</small>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/site.js"></script>
+</body>
+</html>

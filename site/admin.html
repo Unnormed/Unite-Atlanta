@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UA Backend · Unite Atlanta</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%230D0D0D%22/><text y=%2274%22 x=%2250%22 text-anchor=%22middle%22 font-family=%22Arial Black%22 font-size=%2260%22 fill=%22%23D7F204%22>UA</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:ital,wght@0,400;0,500;0,700;0,900;1,400&family=Bodoni+Moda:ital,opsz,wght@1,6..96,400;1,6..96,600&family=IBM+Plex+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body class="admin-page">
+
+<div class="gate open" id="adminGate">
+  <div class="g-box">
+    <h3>UA Backend</h3>
+    <p>Team access only. Enter the staff code.</p>
+    <form id="gateForm">
+      <input id="gateInput" placeholder="STAFF CODE" autocomplete="off" aria-label="Staff code">
+      <button type="submit">Enter</button>
+    </form>
+    <p class="g-err" id="gateErr"></p>
+    <a class="g-close" href="/">Back to the site</a>
+  </div>
+</div>
+
+<div id="admin">
+  <div class="adm-top">
+    <span class="at-brand"><i></i>UA Backend</span>
+    <span class="save-state" id="saveState">Demo storage · this browser</span>
+    <a class="adm-close" href="/" style="display:flex;align-items:center;text-decoration:none">Exit ✕</a>
+  </div>
+  <div class="adm-tabs" id="admTabs"></div>
+  <div class="adm-body" id="admBody"></div>
+</div>
+
+<script src="/assets/data.js"></script>
+<script>
+const D = window.UA_DATA;
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const KEY = "ua-store-v1";
+function loadStore(){
+  try{ return Object.assign({submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{}}, JSON.parse(localStorage.getItem(KEY)||"{}")); }
+  catch(e){ return {submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{}}; }
+}
+let ST = loadStore();
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(ST)); setSave("Saved · demo storage in this browser","ok"); }catch(e){ setSave("Could not save","err"); } }
+function setSave(t,c){ const el=$("#saveState"); el.textContent=t; el.className="save-state "+(c||""); }
+
+const SETTINGS = () => Object.assign({}, D.settings, ST.settings);
+const TYPES = {
+  mixer:{label:"Mixer",bg:"#D7F204",fg:"#0D0D0D"}, panel:{label:"Panel",bg:"#858AE3",fg:"#0D0D0D"},
+  listening:{label:"Listening",bg:"#613DC1",fg:"#F2EFE9"}, performance:{label:"Performance",bg:"#FF4A1C",fg:"#0D0D0D"},
+  civic:{label:"Civic",bg:"#F2EFE9",fg:"#0D0D0D"}, legacy:{label:"Legacy",bg:"#FF9F1C",fg:"#0D0D0D"},
+  other:{label:"Other",bg:"#CFC9BD",fg:"#0D0D0D"}
+};
+
+/* all submissions = baseline samples (status via ST.handled) + browser-added */
+function allSubs(){
+  const base = D.submissions.map(s => Object.assign({}, s, {status: ST.handled[s.id] || s.status}));
+  return base.concat(ST.submissions.map(s => Object.assign({}, s, {status: ST.handled[s.id] || s.status})));
+}
+function speaksAll(){ return D.speaks.map(p => Object.assign({}, p, {status: ST.speaksStatus[p.id] || p.status})); }
+function allEvents(){ return D.events.concat(ST.approvedEvents); }
+function rsvpOf(id){ return (D.rsvps[id]||0) + (ST.rsvps[id]||0); }
+
+/* gate */
+try{ if(sessionStorage.getItem("ua-admin")==="1"){ $("#adminGate").classList.remove("open"); $("#admin").classList.add("open"); } }catch(e){}
+$("#gateForm").addEventListener("submit",ev=>{
+  ev.preventDefault();
+  if($("#gateInput").value.trim().toUpperCase()===SETTINGS().adminCode.toUpperCase()){
+    try{ sessionStorage.setItem("ua-admin","1"); }catch(e){}
+    $("#adminGate").classList.remove("open");
+    $("#admin").classList.add("open");
+    renderAdmin();
+  } else { $("#gateErr").textContent="Wrong code."; $("#gateInput").value=""; }
+});
+
+let admTab = "overview";
+function renderAdmin(){
+  const pending = allSubs().filter(s=>s.status==="pending").length;
+  const tabs = [["overview","Overview",0],["submissions","Submissions",pending],["speaks","Atlanta Speaks",0],["subscribers","Subscribers",0],["settings","Settings",0]];
+  $("#admTabs").innerHTML = tabs.map(([k,l,b])=>`<button class="${admTab===k?"on":""}" data-t="${k}">${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("");
+  document.querySelectorAll("#admTabs button").forEach(b=>b.addEventListener("click",()=>{admTab=b.dataset.t;renderAdmin();}));
+  const body = $("#admBody");
+  if(admTab==="overview") body.innerHTML = admOverview();
+  if(admTab==="submissions") body.innerHTML = admSubmissions();
+  if(admTab==="speaks") body.innerHTML = admSpeaks();
+  if(admTab==="subscribers") body.innerHTML = admSubscribers();
+  if(admTab==="settings") body.innerHTML = admSettings();
+}
+function admOverview(){
+  const pending = allSubs().filter(s=>s.status==="pending").length;
+  const pubs = speaksAll().filter(p=>p.status==="published").length;
+  const subs = D.subscribers.length + ST.subscribers.length;
+  const ids = new Set(Object.keys(D.rsvps).concat(Object.keys(ST.rsvps)));
+  let total = 0; ids.forEach(id=> total += rsvpOf(id));
+  const top = allEvents().map(e=>({e,n:rsvpOf(e.id)})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,5);
+  return `
+    <div class="adm-grid">
+      <div class="stat"><span class="k">Pending submissions</span><div class="v ${pending?"red":""}">${pending}</div></div>
+      <div class="stat"><span class="k">Live events</span><div class="v">${allEvents().length}</div></div>
+      <div class="stat"><span class="k">Published posts</span><div class="v">${pubs}</div></div>
+      <div class="stat"><span class="k">Subscribers</span><div class="v">${subs}</div></div>
+      <div class="stat"><span class="k">Total RSVPs</span><div class="v">${total}</div></div>
+    </div>
+    <h3 class="adm-h">Most RSVP'd events</h3>
+    <div class="adm-rows">${top.map(({e,n})=>`<div class="adm-row"><span class="ar-t">${esc(e.title)}<small>${e.d} · ${esc(e.venue)}</small></span><span class="st pub">${n} RSVPs</span></div>`).join("")||'<div class="adm-row"><span class="ar-t">No RSVPs yet.</span></div>'}</div>
+    <p class="adm-note">Demo build: actions are stored in this browser. The production backend gets a real database and per-user accounts; this preview shows the full workflow.</p>`;
+}
+function admSubmissions(){
+  const pending = allSubs().filter(s=>s.status==="pending");
+  const done = allSubs().filter(s=>s.status!=="pending");
+  const card = s => {
+    const c = TYPES[s.type]||TYPES.other;
+    return `<div class="sub-card">
+      <div class="sc-top">
+        <div class="sc-img">${s.img?`<img src="${s.img}" alt="">`:`<span class="noimg">No flyer uploaded</span>`}</div>
+        <div class="sc-main">
+          <h4>${esc(s.title)}</h4>
+          <div class="sc-tags">
+            <span style="--pc:${c.bg};--fc:${c.fg}">${c.label}</span>
+            <span>${s.tier==="plus"?"Plus ■":"Open"}</span>
+            <span>${esc(s.d)} · ${esc(s.t)}</span>
+            ${s.sample?`<span style="opacity:.55">Sample</span>`:""}
+          </div>
+          <p class="sc-desc">${esc(s.desc)}</p>
+          <p class="sc-meta">Venue: ${esc(s.venue)} · By ${esc(s.name)} &lt;${esc(s.email)}&gt;${s.social?` · <a href="${esc(s.social)}" target="_blank" rel="noopener">${esc(s.social)}</a>`:""}</p>
+        </div>
+      </div>
+      <div class="sc-actions">
+        <button class="approve" onclick="admApprove('${s.id}')">Approve → publish to calendar</button>
+        <button class="reject" onclick="admReject('${s.id}')">Reject</button>
+      </div>
+    </div>`;
+  };
+  return `<h3 class="adm-h" style="margin-top:0">Awaiting review (${pending.length})</h3>
+    ${pending.map(card).join("")||'<p class="adm-note">Queue is empty. The city is quiet. Suspicious.</p>'}
+    <h3 class="adm-h">Handled</h3>
+    <div class="adm-rows">${done.map(s=>`<div class="adm-row"><span class="ar-t">${esc(s.title)}<small>${esc(s.d)} · by ${esc(s.name)}</small></span><span class="st ${s.status==="approved"?"pub":"rej"}">${s.status}</span></div>`).join("")||'<div class="adm-row"><span class="ar-t">Nothing handled yet.</span></div>'}</div>`;
+}
+function admApprove(id){
+  const s = allSubs().find(x=>x.id===id); if(!s) return;
+  ST.handled[id] = "approved";
+  ST.approvedEvents.push({ id:"u"+Date.now(), d:s.d, t:s.t, title:s.title, venue:s.venue, type:s.type, tier:s.tier, desc:s.desc||"Community submission.", img:s.img||null, social:s.social||null });
+  save(); renderAdmin();
+}
+function admReject(id){ ST.handled[id] = "rejected"; save(); renderAdmin(); }
+function admSpeaks(){
+  return `<h3 class="adm-h" style="margin-top:0">Posts</h3>
+    <div class="adm-rows">${speaksAll().map(p=>`<div class="adm-row">
+      <span class="ar-t">${esc(p.title)}<small>${esc(p.name)} · ${esc(p.role)} · ${esc(p.date)}</small></span>
+      <span class="st ${p.status==="published"?"pub":"dft"}">${p.status}</span>
+      <button class="mini" onclick="admTogglePost('${p.id}')">${p.status==="published"?"Unpublish":"Publish"}</button>
+      <a class="mini" style="text-decoration:none" href="/speaks/${p.slug}" target="_blank" rel="noopener">View page</a>
+    </div>`).join("")}</div>
+    <p class="adm-note">Published posts appear in the Atlanta Speaks journal on the homepage. Every post has its own page at /speaks/&lt;name&gt;.</p>`;
+}
+function admTogglePost(id){
+  const p = speaksAll().find(x=>x.id===id); if(!p) return;
+  ST.speaksStatus[id] = p.status==="published" ? "draft" : "published";
+  save(); renderAdmin();
+}
+function admSubscribers(){
+  const rows = D.subscribers.concat(ST.subscribers);
+  return `<h3 class="adm-h" style="margin-top:0">Newsletter list (${rows.length})</h3>
+    <div class="adm-rows">${rows.slice().reverse().map(s=>`<div class="adm-row"><span class="ar-t">${esc(s.email)}</span><span class="st">${esc(s.ts)}</span></div>`).join("")||'<div class="adm-row"><span class="ar-t">No subscribers yet.</span></div>'}</div>`;
+}
+function admSettings(){
+  return `<div class="adm-settings">
+    <h3 class="adm-h" style="margin-top:0">Plus access code</h3>
+    <label>Current code<input id="setPlusCode" value="${esc(SETTINGS().plusCode)}"></label>
+    <label style="margin-top:12px">Rotates on<input id="setRotates" value="${esc(SETTINGS().codeRotates)}"></label>
+    <button class="mini2" onclick="admSaveSettings()">Save</button>
+    <h3 class="adm-h">Staff code</h3>
+    <p class="adm-note" style="margin-top:0">Backend access code: <b>${esc(SETTINGS().adminCode)}</b>. This demo checks the code client-side; the production build moves auth and data behind a real server.</p>
+  </div>`;
+}
+function admSaveSettings(){
+  ST.settings.plusCode = $("#setPlusCode").value.trim() || SETTINGS().plusCode;
+  ST.settings.codeRotates = $("#setRotates").value.trim() || SETTINGS().codeRotates;
+  save();
+}
+renderAdmin();
+</script>
+</body>
+</html>
