@@ -43,8 +43,8 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const KEY = "ua-store-v1";
 function loadStore(){
-  try{ return Object.assign({submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[]}, JSON.parse(localStorage.getItem(KEY)||"{}")); }
-  catch(e){ return {submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[]}; }
+  try{ return Object.assign({submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[],hiddenEvents:[],pitches:[],rejectReasons:{},owners:{}}, JSON.parse(localStorage.getItem(KEY)||"{}")); }
+  catch(e){ return {submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[],hiddenEvents:[],pitches:[],rejectReasons:{},owners:{}}; }
 }
 let ST = loadStore();
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(ST)); setSave("Saved · demo storage in this browser","ok"); }catch(e){ setSave("Could not save","err"); } }
@@ -63,9 +63,15 @@ function allSubs(){
   const base = D.submissions.map(s => Object.assign({}, s, {status: ST.handled[s.id] || s.status}));
   return base.concat(ST.submissions.map(s => Object.assign({}, s, {status: ST.handled[s.id] || s.status})));
 }
+function allPitches(){
+  const base = (D.pitches||[]).map(x => Object.assign({}, x, {status: ST.handled[x.id] || x.status}));
+  return base.concat((ST.pitches||[]).map(x => Object.assign({}, x, {status: ST.handled[x.id] || x.status})));
+}
+const OPS = D.ops || {criteria:[],rejectReasons:[],roles:[],speaksPolicy:[],steps:[]};
 function speaksAll(){ return D.speaks.map(p => Object.assign({}, p, {status: ST.speaksStatus[p.id] || p.status})); }
 function customPosts(){ return ST.customPosts || []; }
-function allEvents(){ return D.events.concat(ST.approvedEvents); }
+function allEvents(){ return D.events.filter(e=>!(ST.hiddenEvents||[]).includes(e.id)).concat(ST.approvedEvents); }
+function hiddenEventsList(){ return D.events.filter(e=>(ST.hiddenEvents||[]).includes(e.id)); }
 function rsvpOf(id){ return Array.isArray(ST.rsvps[id]) ? ST.rsvps[id].length : 0; }
 function rsvpEntries(id){ return Array.isArray(ST.rsvps[id]) ? ST.rsvps[id] : []; }
 
@@ -85,15 +91,18 @@ let admTab = "overview";
 function renderAdmin(){
   const pending = allSubs().filter(s=>s.status==="pending").length;
   let rsvpTotal = 0; Object.keys(ST.rsvps).forEach(id=> rsvpTotal += rsvpOf(id));
-  const tabs = [["overview","Overview",0],["submissions","Submissions",pending],["rsvps","RSVPs",rsvpTotal],["speaks","Atlanta Speaks",0],["subscribers","Subscribers",0],["settings","Settings",0]];
+  const pendingPitches = allPitches().filter(x=>x.status==="pending").length;
+  const tabs = [["overview","Overview",0],["submissions","Submissions",pending],["events","Events",0],["rsvps","RSVPs",rsvpTotal],["speaks","Atlanta Speaks",pendingPitches],["subscribers","Subscribers",0],["ops","Operations",0],["settings","Settings",0]];
   $("#admTabs").innerHTML = tabs.map(([k,l,b])=>`<button class="${admTab===k?"on":""}" data-t="${k}">${l}${b?`<span class="badge">${b}</span>`:""}</button>`).join("");
   document.querySelectorAll("#admTabs button").forEach(b=>b.addEventListener("click",()=>{admTab=b.dataset.t;renderAdmin();}));
   const body = $("#admBody");
   if(admTab==="overview") body.innerHTML = admOverview();
   if(admTab==="submissions") body.innerHTML = admSubmissions();
+  if(admTab==="events") body.innerHTML = admEvents();
   if(admTab==="rsvps") body.innerHTML = admRsvps();
   if(admTab==="speaks") body.innerHTML = admSpeaks();
   if(admTab==="subscribers") body.innerHTML = admSubscribers();
+  if(admTab==="ops") body.innerHTML = admOps();
   if(admTab==="settings") body.innerHTML = admSettings();
 }
 function admOverview(){
@@ -105,6 +114,7 @@ function admOverview(){
   return `
     <div class="adm-grid">
       <div class="stat"><span class="k">Pending submissions</span><div class="v ${pending?"red":""}">${pending}</div></div>
+      <div class="stat"><span class="k">Pending pitches</span><div class="v ${allPitches().filter(x=>x.status==="pending").length?"red":""}">${allPitches().filter(x=>x.status==="pending").length}</div></div>
       <div class="stat"><span class="k">Live events</span><div class="v">${allEvents().length}</div></div>
       <div class="stat"><span class="k">Published posts</span><div class="v">${pubs}</div></div>
       <div class="stat"><span class="k">Subscribers</span><div class="v">${subs}</div></div>
@@ -131,19 +141,31 @@ function admSubmissions(){
             ${s.sample?`<span style="opacity:.55">Sample</span>`:""}
           </div>
           <p class="sc-desc">${esc(s.desc)}</p>
-          <p class="sc-meta">Venue: ${esc(s.venue)} · By ${esc(s.name)} &lt;${esc(s.email)}&gt;${s.social?` · <a href="${esc(s.social)}" target="_blank" rel="noopener">${esc(s.social)}</a>`:""}</p>
+          <p class="sc-meta">Venue: ${esc(s.venue)} · By ${esc(s.name)}${s.org?` (${esc(s.org)})`:""} &lt;${esc(s.email)}&gt;${s.social?` · <a href="${esc(s.social)}" target="_blank" rel="noopener">${esc(s.social)}</a>`:""}</p>
         </div>
       </div>
+      <div class="sc-check" id="ck-${s.id}">
+        <p class="crit-h">Listing criteria · tick all five to approve</p>
+        ${OPS.criteria.map(c=>`<label class="check"><input type="checkbox" onchange="admCritChange('${s.id}')"><span>${esc(c.label)}</span></label>`).join("")}
+      </div>
       <div class="sc-actions">
-        <button class="approve" onclick="admApprove('${s.id}')">Approve → publish to calendar</button>
-        <button class="reject" onclick="admReject('${s.id}')">Reject</button>
+        <button class="approve" id="ap-${s.id}" disabled onclick="admApprove('${s.id}')">Approve → publish to calendar</button>
+        <select class="rej-sel" id="rr-${s.id}" aria-label="Reason for declining">${OPS.rejectReasons.map(r=>`<option>${esc(r)}</option>`).join("")}</select>
+        <button class="reject" onclick="admReject('${s.id}')">Decline</button>
       </div>
     </div>`;
   };
   return `<h3 class="adm-h" style="margin-top:0">Awaiting review (${pending.length})</h3>
     ${pending.map(card).join("")||'<p class="adm-note">Queue is empty. The city is quiet. Suspicious.</p>'}
     <h3 class="adm-h">Handled</h3>
-    <div class="adm-rows">${done.map(s=>`<div class="adm-row"><span class="ar-t">${esc(s.title)}<small>${esc(s.d)} · by ${esc(s.name)}</small></span><span class="st ${s.status==="approved"?"pub":"rej"}">${s.status}</span></div>`).join("")||'<div class="adm-row"><span class="ar-t">Nothing handled yet.</span></div>'}</div>`;
+    <div class="adm-rows">${done.map(s=>`<div class="adm-row"><span class="ar-t">${esc(s.title)}<small>${esc(s.d)} · by ${esc(s.name)}</small></span>${s.status!=="approved"&&ST.rejectReasons&&ST.rejectReasons[s.id]?`<span class="st">${esc(ST.rejectReasons[s.id])}</span>`:""}<span class="st ${s.status==="approved"?"pub":"rej"}">${s.status==="approved"?"approved":"declined"}</span></div>`).join("")||'<div class="adm-row"><span class="ar-t">Nothing handled yet.</span></div>'}</div>
+    <p class="adm-note">Nothing reaches the calendar without a review. Approve unlocks once all five criteria are ticked; a declined event keeps its reason so the organizer can be told why. Criteria and reasons are set under Operations.</p>`;
+}
+function admCritChange(id){
+  const box = document.getElementById("ck-"+id), btn = document.getElementById("ap-"+id);
+  if(!box || !btn) return;
+  const all = box.querySelectorAll("input[type=checkbox]"), on = box.querySelectorAll("input[type=checkbox]:checked");
+  btn.disabled = on.length !== all.length;
 }
 function admApprove(id){
   const s = allSubs().find(x=>x.id===id); if(!s) return;
@@ -151,7 +173,47 @@ function admApprove(id){
   ST.approvedEvents.push({ id:"u"+Date.now(), d:s.d, t:s.t, title:s.title, venue:s.venue, type:s.type, tier:s.tier, desc:s.desc||"Community submission.", img:s.img||null, social:s.social||null });
   save(); renderAdmin();
 }
-function admReject(id){ ST.handled[id] = "rejected"; save(); renderAdmin(); }
+function admReject(id){
+  const sel = document.getElementById("rr-"+id);
+  ST.rejectReasons = ST.rejectReasons || {};
+  ST.rejectReasons[id] = sel ? sel.value : "Other";
+  ST.handled[id] = "rejected"; save(); renderAdmin();
+}
+function admEvents(){
+  const rows = allEvents().slice().sort((a,b)=>a.d.localeCompare(b.d)).map(e=>{
+    const c = TYPES[e.type]||TYPES.other;
+    const community = String(e.id).startsWith("u");
+    return `<div class="adm-row">
+      <span class="ar-t">${esc(e.title)}<small>${e.d} · ${e.t} · ${esc(e.venue)}</small></span>
+      <span class="st" style="background:${c.bg};color:${c.fg}">${c.label}</span>
+      <span class="st ${e.tier==="plus"?"pub":""}">${e.tier==="plus"?"Plus":"Open"}</span>
+      <span class="st ${community?"pub":"dft"}">${community?"community":"editorial"}</span>
+      <button class="mini" style="background:var(--scarlet)" onclick="admRemoveEvent('${e.id}')">Remove</button>
+    </div>`;
+  }).join("");
+  const hidden = hiddenEventsList().map(e=>`<div class="adm-row">
+      <span class="ar-t">${esc(e.title)}<small>${e.d} · ${esc(e.venue)}</small></span>
+      <span class="st rej">removed</span>
+      <button class="mini" onclick="admRestoreEvent('${e.id}')">Restore</button>
+    </div>`).join("");
+  return `<h3 class="adm-h" style="margin-top:0">On the calendar (${allEvents().length})</h3>
+    <div class="adm-rows">${rows||'<div class="adm-row"><span class="ar-t">The calendar is empty.</span></div>'}</div>
+    ${hidden?`<h3 class="adm-h">Removed</h3><div class="adm-rows">${hidden}</div>`:""}
+    <p class="adm-note">Remove takes an event off the calendar, Next Up and the Back Room immediately. Editorial events can be restored; community events are gone for good.</p>`;
+}
+function admRemoveEvent(id){
+  const idx = ST.approvedEvents.findIndex(e=>e.id===id);
+  if(idx >= 0){ ST.approvedEvents.splice(idx,1); }
+  else {
+    ST.hiddenEvents = ST.hiddenEvents || [];
+    if(!ST.hiddenEvents.includes(id)) ST.hiddenEvents.push(id);
+  }
+  save(); renderAdmin();
+}
+function admRestoreEvent(id){
+  ST.hiddenEvents = (ST.hiddenEvents||[]).filter(x=>x!==id);
+  save(); renderAdmin();
+}
 function admRsvps(){
   const withRsvps = allEvents().map(e=>({e, entries: rsvpEntries(e.id)})).filter(x=>x.entries.length>0);
   if(!withRsvps.length) return '<h3 class="adm-h" style="margin-top:0">Guest lists</h3><p class="adm-note" style="margin-top:0">No RSVPs yet. Every RSVP made on this site (in this browser) lands here with name, email and ticket code.</p>';
@@ -159,20 +221,41 @@ function admRsvps(){
     <h3 class="adm-h" style="font-size:19px">${esc(e.title)} <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:.1em">· ${e.d} · ${entries.length} on the list</span></h3>
     <div class="adm-rows">${entries.map(r=>`<div class="adm-row"><span class="ar-t">${esc(r.name)}<small>${esc(r.email)}</small></span><span class="st pub">${esc(r.code)}</span><span class="st">${esc(r.ts)}</span></div>`).join("")}</div>`).join("");
 }
+function kindOf(p){ return `${esc(p.kind||"Opinion")} · ${p.source==="community"?"community pitch":"commissioned"}`; }
 function admSpeaks(){
   const customRows = customPosts().map(p=>`<div class="adm-row">
-      <span class="ar-t">${esc(p.title)}<small>${esc(p.name)} · ${esc(p.role)} · ${esc(p.date)}</small></span>
+      <span class="ar-t">${esc(p.title)}<small>${esc(p.name)} · ${esc(p.role)} · ${esc(p.date)} · ${kindOf(p)}</small></span>
       <span class="st ${p.status==="published"?"pub":"dft"}">${p.status}</span>
       <button class="mini" onclick="admToggleCustom('${p.id}')">${p.status==="published"?"Unpublish":"Publish"}</button>
       <a class="mini" style="text-decoration:none" href="/speaks/post?id=${p.id}" target="_blank" rel="noopener">View page</a>
       <button class="mini" style="background:var(--scarlet)" onclick="admDeleteCustom('${p.id}')">Delete</button>
     </div>`).join("");
-  return `<h3 class="adm-h" style="margin-top:0">Write a new post</h3>
+  const pend = allPitches().filter(x=>x.status==="pending");
+  const pitchCards = pend.map(x=>`<div class="sub-card">
+      <div class="sc-top"><div class="sc-main">
+        <h4>${esc(x.title)}</h4>
+        <div class="sc-tags"><span>${esc(x.kind)}</span><span>Community pitch</span>${x.sample?`<span style="opacity:.55">Sample</span>`:""}</div>
+        <p class="sc-desc">${esc(x.pitch)}</p>
+        <p class="sc-meta">By ${esc(x.name)} · ${esc(x.role)} &lt;${esc(x.email)}&gt;${x.link?` · <a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.link)}</a>`:""}</p>
+      </div></div>
+      <div class="sc-actions">
+        <button class="approve" onclick="admAcceptPitch('${x.id}')">Accept → open as draft</button>
+        <button class="reject" onclick="admDeclinePitch('${x.id}')">Decline</button>
+      </div>
+    </div>`).join("");
+  return `<h3 class="adm-h" style="margin-top:0">Community pitches (${pend.length})</h3>
+    ${pitchCards||'<p class="adm-note" style="margin-top:0">No pitches waiting. Pitches sent through "Pitch a piece" on the site land here.</p>'}
+    <p class="adm-note">Accepting a pitch opens it as a draft below, credited to the author. Nothing is published until the Speaks editor edits it and presses Publish.</p>
+    <h3 class="adm-h">Write a new post</h3>
     <div class="sub-card" style="padding:16px">
       <form id="newPostForm" style="display:flex;flex-direction:column;gap:12px" onsubmit="admCreatePost(event)">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Author name<input required name="name" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px"></label>
           <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Role / neighborhood<input required name="role" placeholder="DJ · West End" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px"></label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Type<select name="kind" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px;background:#fff"><option>Opinion</option><option>Event recap</option><option>Legacy story</option></select></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">How it came in<select name="source" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px;background:#fff"><option value="commissioned">Commissioned by the editor</option><option value="community">Community pitch</option></select></label>
         </div>
         <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Title<input required name="title" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px"></label>
         <label style="display:flex;flex-direction:column;gap:5px;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase">Pull quote (one sentence)<input required name="quote" style="border:2px solid var(--ink);padding:10px 12px;font-family:inherit;font-size:14px"></label>
@@ -187,7 +270,7 @@ function admSpeaks(){
     ${customRows?`<h3 class="adm-h">Your posts</h3><div class="adm-rows">${customRows}</div>`:""}
     <h3 class="adm-h">Editorial posts</h3>
     <div class="adm-rows">${speaksAll().map(p=>`<div class="adm-row">
-      <span class="ar-t">${esc(p.title)}<small>${esc(p.name)} · ${esc(p.role)} · ${esc(p.date)}</small></span>
+      <span class="ar-t">${esc(p.title)}<small>${esc(p.name)} · ${esc(p.role)} · ${esc(p.date)} · ${kindOf(p)}</small></span>
       <span class="st ${p.status==="published"?"pub":"dft"}">${p.status}</span>
       <button class="mini" onclick="admTogglePost('${p.id}')">${p.status==="published"?"Unpublish":"Publish"}</button>
       <a class="mini" style="text-decoration:none" href="/speaks/${p.slug}" target="_blank" rel="noopener">View page</a>
@@ -220,12 +303,23 @@ function admCreatePost(ev){
   ST.customPosts.unshift({
     id: "c"+Date.now(), name:String(f.get("name")), role:String(f.get("role")),
     title:String(f.get("title")), quote:String(f.get("quote")), body: paras,
+    kind:String(f.get("kind")||"Opinion"), source:String(f.get("source")||"commissioned"),
     img: postImgUri, status,
     date: status==="published" ? MONTH_SHORT[now.getMonth()]+" "+now.getDate()+", "+now.getFullYear() : "UNPUBLISHED"
   });
   postImgUri = null;
   save(); renderAdmin();
 }
+function admAcceptPitch(id){
+  const x = allPitches().find(q=>q.id===id); if(!x) return;
+  ST.handled[id] = "accepted";
+  const first = String(x.pitch).split(/(?<=[.!?])\s+/)[0] || x.title;
+  ST.customPosts = customPosts();
+  ST.customPosts.unshift({ id:"c"+Date.now(), name:x.name, role:x.role, title:x.title, quote:first, body:[x.pitch],
+    kind:x.kind, source:"community", img:null, status:"draft", date:"UNPUBLISHED" });
+  save(); renderAdmin();
+}
+function admDeclinePitch(id){ ST.handled[id] = "declined"; save(); renderAdmin(); }
 function admToggleCustom(id){
   const p = customPosts().find(x=>x.id===id); if(!p) return;
   p.status = p.status==="published" ? "draft" : "published";
@@ -249,6 +343,28 @@ function admSubscribers(){
   const rows = D.subscribers.concat(ST.subscribers);
   return `<h3 class="adm-h" style="margin-top:0">Newsletter list (${rows.length})</h3>
     <div class="adm-rows">${rows.slice().reverse().map(s=>`<div class="adm-row"><span class="ar-t">${esc(s.email)}</span><span class="st">${esc(s.ts)}</span></div>`).join("")||'<div class="adm-row"><span class="ar-t">No subscribers yet.</span></div>'}</div>`;
+}
+function admOps(){
+  const owners = ST.owners || {};
+  return `<h3 class="adm-h" style="margin-top:0">Who owns what</h3>
+    <div class="adm-rows">${OPS.roles.map(r=>`<div class="adm-row">
+      <span class="ar-t">${esc(r.title)}<small>${esc(r.load)}</small><span class="ar-d">${esc(r.does)}</span></span>
+      <input class="own-in" id="own-${r.id}" value="${esc(owners[r.id]||"")}" placeholder="Owner: to be decided" aria-label="Owner of ${esc(r.title)}">
+    </div>`).join("")}</div>
+    <button class="mini2" style="margin-top:12px;border:2px solid var(--ink);background:var(--lime);font-family:var(--font-display);font-size:15px;text-transform:uppercase;padding:10px 20px" onclick="admSaveOwners()">Save owners</button>
+    <p class="adm-note">Proposal v1. Names saved here show on the "How it runs" section of the site (demo: in this browser). One person can hold more than one role; the time estimates assume launch volume and should be checked after the first month.</p>
+    <h3 class="adm-h">Listing criteria</h3>
+    <div class="adm-rows">${OPS.criteria.map((c,i)=>`<div class="adm-row"><span class="st pub">${String(i+1).padStart(2,"0")}</span><span class="ar-t">${esc(c.label)}<small>${esc(c.hint)}</small></span></div>`).join("")}</div>
+    <h3 class="adm-h">Reasons for declining an event</h3>
+    <div class="adm-rows"><div class="adm-row" style="gap:8px">${OPS.rejectReasons.map(r=>`<span class="st">${esc(r)}</span>`).join("")}</div></div>
+    <h3 class="adm-h">How Atlanta Speaks works</h3>
+    <div class="adm-rows">${OPS.speaksPolicy.map(x=>`<div class="adm-row"><span class="ar-t">${esc(x.t)}<small>${esc(x.d)}</small></span></div>`).join("")}</div>
+    <p class="adm-note">Open decisions for the team: who holds each role, whether Speaks pays for commissioned pieces, how often a new piece runs, and who signs off on Plus invitations.</p>`;
+}
+function admSaveOwners(){
+  ST.owners = ST.owners || {};
+  OPS.roles.forEach(r=>{ const el = document.getElementById("own-"+r.id); if(el) ST.owners[r.id] = el.value.trim(); });
+  save(); renderAdmin();
 }
 function admSettings(){
   return `<div class="adm-settings">

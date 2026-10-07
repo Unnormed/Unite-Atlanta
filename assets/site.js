@@ -1,4 +1,4 @@
-/* UNITE ATLANTA · site.js · concept v4 (Vercel) */
+/* UNITE ATLANTA · site.js · concept v5 (Vercel) */
 (function(){
 const D = window.UA_DATA;
 const $ = s => document.querySelector(s);
@@ -7,15 +7,15 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<"
 /* ---- store: demo persistence in this browser ---- */
 const KEY = "ua-store-v1";
 function loadStore(){
-  try{ return Object.assign({submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[]}, JSON.parse(localStorage.getItem(KEY)||"{}")); }
-  catch(e){ return {submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[]}; }
+  try{ return Object.assign({submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[],hiddenEvents:[],pitches:[],rejectReasons:{},owners:{}}, JSON.parse(localStorage.getItem(KEY)||"{}")); }
+  catch(e){ return {submissions:[],handled:{},approvedEvents:[],subscribers:[],rsvps:{},speaksStatus:{},settings:{},customPosts:[],hiddenEvents:[],pitches:[],rejectReasons:{},owners:{}}; }
 }
 function saveStore(st){ try{ localStorage.setItem(KEY, JSON.stringify(st)); }catch(e){} }
 let ST = loadStore();
 window.UA_STORE = { load: loadStore, save: saveStore };
 
 const SETTINGS = () => Object.assign({}, D.settings, ST.settings);
-const EVENTS = () => D.events.concat(ST.approvedEvents);
+const EVENTS = () => D.events.filter(e=>!(ST.hiddenEvents||[]).includes(e.id)).concat(ST.approvedEvents);
 const RSVPS = id => (Array.isArray(ST.rsvps[id]) ? ST.rsvps[id].length : 0);
 
 const TYPES = {
@@ -34,6 +34,7 @@ const DAYS_S = ["SUN","MON","TUE","WED","THU","FRI","SAT"];
 const DAYS_L = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 let curMonth = 0, curFilter = "all", plusActive = false;
 
+(function(){ const t = new Date(); const i = MONTHS.findIndex(([y,m])=>y===t.getFullYear()&&m===t.getMonth()); if(i>=0) curMonth = i; })();
 function evDate(e){ return new Date(e.d+"T00:00:00"); }
 function evById(id){ return EVENTS().find(e=>e.id===id); }
 function monthEvents(mi){ const [y,m]=MONTHS[mi]; return EVENTS().filter(e=>{const dt=evDate(e);return dt.getFullYear()===y&&dt.getMonth()===m;}); }
@@ -138,18 +139,54 @@ function renderBackroom(){
 
 
 /* ---- speaks ---- */
+let speaksPage = 0;
+window.speaksNav = function(d){ speaksPage += d; renderSpeaks(); };
 function renderSpeaks(){
   const builtIn = D.speaks.filter(p => (ST.speaksStatus[p.id]||p.status) === "published").map(p=>({p, href:"/speaks/"+p.slug}));
   const custom = (ST.customPosts||[]).filter(p=>p.status==="published").map(p=>({p, href:"/speaks/post?id="+p.id}));
-  const pubs = builtIn.concat(custom);
+  const all = custom.concat(builtIn);
+  const pages = Math.max(1, Math.ceil(all.length/3));
+  if(speaksPage >= pages) speaksPage = pages-1;
+  if(speaksPage < 0) speaksPage = 0;
+  const pubs = all.slice(speaksPage*3, speaksPage*3+3);
+  const pager = $("#speaksPager");
+  if(pager){
+    if(pages > 1){
+      pager.style.display = "flex";
+      pager.innerHTML = `<button onclick="speaksNav(-1)" ${speaksPage===0?"disabled":""} aria-label="Previous voices">←</button>
+        <span class="pg">${String(speaksPage+1).padStart(2,"0")} / ${String(pages).padStart(2,"0")}</span>
+        <button onclick="speaksNav(1)" ${speaksPage===pages-1?"disabled":""} aria-label="Next voices">→</button>`;
+    } else { pager.style.display = "none"; }
+  }
   $("#voicesWrap").innerHTML = pubs.map(({p, href})=>`<div class="voice">
-      ${p.img?`<a class="vph" href="${href}"><img src="${p.img}" alt="Portrait for ${esc(p.name)}"></a>`:""}
+      ${p.img?`<a class="vph" href="${href}"><img src="${p.img}" alt="Portrait for ${esc(p.name)}"></a>`:`<a class="vph vph-txt" href="${href}"><span>${esc(String(p.name||"UA").split(" ").map(w=>w[0]||"").join("").slice(0,3).toUpperCase())}</span></a>`}
       <a class="vq" href="${href}">
+        <span class="vkind">${esc(p.kind||"Opinion")} · ${p.source==="community"?"Community pitch":"Commissioned"}</span>
         <p>&ldquo;${esc(p.quote)}&rdquo;</p>
         <cite>${esc(p.name)} · ${esc(p.role)}</cite>
         <span class="rm">Read more ↗</span>
       </a>
     </div>`).join("");
+}
+
+/* ---- how it runs (proposal v1, from data.js) ---- */
+function renderHow(){
+  const O = D.ops; if(!O) return;
+  const owners = ST.owners || {};
+  const critHtml = O.criteria.map(c=>`<li><strong>${esc(c.label)}</strong><span>${esc(c.hint)}</span></li>`).join("");
+  const hs = $("#howSteps"); if(hs) hs.innerHTML = O.steps.map(x=>`<div class="how-step"><span class="hn">${esc(x.n)}</span><h4>${esc(x.t)}</h4><p>${esc(x.d)}</p></div>`).join("");
+  const hc = $("#howCriteria"); if(hc) hc.innerHTML = critHtml;
+  const sc = $("#submitCriteria"); if(sc) sc.innerHTML = O.criteria.map(c=>`<li>${esc(c.label)}</li>`).join("");
+  const hp = $("#howPolicy"); if(hp) hp.innerHTML = O.speaksPolicy.map(x=>`<li><strong>${esc(x.t)}</strong><span>${esc(x.d)}</span></li>`).join("");
+  const hr = $("#howRoles"); if(hr) hr.innerHTML = O.roles.map(r=>{
+    const who = String(owners[r.id]||"").trim();
+    return `<div class="role">
+      <span class="role-load">${esc(r.load)}</span>
+      <h4>${esc(r.title)}</h4>
+      <p>${esc(r.does)}</p>
+      <span class="role-owner ${who?"set":""}">${who?"Owner: "+esc(who):"Owner: to be decided"}</span>
+    </div>`;
+  }).join("");
 }
 
 /* ---- event modal ---- */
@@ -207,6 +244,12 @@ window.startRsvp = function(id){
     renderBackroom();
   });
 };
+function mailtoTicket(e, entry){
+  const dt = evDate(e);
+  const subject = "Your Unite Atlanta ticket · " + e.title;
+  const body = ["You're on the list.","","Ticket: "+entry.code,"Name: "+entry.name,"Event: "+e.title,"Date: "+DAYS_L[dt.getDay()]+" "+MONTH_NAMES[dt.getMonth()]+" "+dt.getDate()+", "+dt.getFullYear(),"Time: "+e.t+" ET","Venue: "+e.venue,"","Show this ticket at the door.","unite-atlanta.vercel.app"].join("\n");
+  return "mailto:"+encodeURIComponent(entry.email)+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+}
 function showTicket(e, entry){
   const dt = evDate(e), c = tOf(e);
   $("#eventModalBody").innerHTML = `
@@ -224,6 +267,7 @@ function showTicket(e, entry){
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <a class="btn-lime" href="${icsFor(e)}" download="${e.id}-unite-atlanta.ics">Add to calendar</a>
+        <a class="btn-ink" href="${mailtoTicket(e, entry)}">Email my ticket</a>
         <button class="btn-ink" onclick="closeModal('eventModal')">Done</button>
       </div>
       <p class="m-desc" style="margin-top:14px;opacity:.6">Screenshot this or show it at the door. Demo build: your ticket is stored in this browser, no confirmation email is sent yet.</p>
@@ -280,7 +324,7 @@ $("#submitForm").addEventListener("submit",ev=>{
   const f = new FormData($("#submitForm"));
   ST.submissions.push({
     id:"s"+Date.now(), status:"pending", sample:false,
-    name:f.get("name"), email:f.get("email"), title:f.get("title"),
+    name:f.get("name"), email:f.get("email"), org:f.get("org")||"", title:f.get("title"),
     d:f.get("date"), t:f.get("time"), venue:f.get("venue"),
     type:f.get("type"), tier:f.get("tier"), social:f.get("social")||null,
     img:uploadDataUri, desc:f.get("desc")||""
@@ -288,8 +332,25 @@ $("#submitForm").addEventListener("submit",ev=>{
   saveStore(ST);
   $("#submitForm").style.display="none";
   $("#submitDone").style.display="block";
-  $("#submitDoneNote").textContent = "Filed with the team. Reviewed & published within 48 hours.";
+  $("#submitDoneNote").textContent = "Filed with the calendar editor. Reviewed against the listing criteria within 48 hours.";
 });
+(function(){ const sd = $("#subDate"); if(sd) sd.min = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0"); })();
+
+/* ---- pitch a piece ---- */
+$("#pitchForm").addEventListener("submit",ev=>{
+  ev.preventDefault();
+  const f = new FormData($("#pitchForm"));
+  ST.pitches = ST.pitches || [];
+  ST.pitches.push({
+    id:"t"+Date.now(), status:"pending", sample:false,
+    name:String(f.get("name")), email:String(f.get("email")), role:String(f.get("role")),
+    kind:String(f.get("kind")), title:String(f.get("title")), pitch:String(f.get("pitch")), link:f.get("link")||null
+  });
+  saveStore(ST);
+  $("#pitchForm").style.display="none";
+  $("#pitchDone").style.display="block";
+});
+try{ if(new URLSearchParams(location.search).get("pitch")==="1") openModal("pitchModal"); }catch(e){}
 $("#mailForm").addEventListener("submit",ev=>{
   ev.preventDefault();
   ST.subscribers.push({email: $("#mailInput").value.trim(), ts: MONTH_SHORT[now.getMonth()]+" "+now.getDate()+", "+now.getFullYear()});
@@ -302,5 +363,5 @@ $("#mailForm").addEventListener("submit",ev=>{
 const io = new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){en.target.classList.add("on");io.unobserve(en.target);}})},{threshold:.1});
 document.querySelectorAll(".rv").forEach(el=>io.observe(el));
 
-renderNextUp(); renderLegend(); renderCal(); renderBackroom(); renderSpeaks();
+renderNextUp(); renderLegend(); renderCal(); renderBackroom(); renderSpeaks(); renderHow();
 })();

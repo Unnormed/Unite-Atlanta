@@ -32,10 +32,10 @@
   <div class="foot-mast" aria-hidden="true">UNITE<em>ATL</em>ANTA</div>
   <div class="foot-bar">
     <div class="fl">
-      <a href="/#calendar">Calendar</a><a href="/#mission">Mission</a><a href="/#plus">Plus</a><a href="/#speaks">Speaks</a>
+      <a href="/#calendar">Calendar</a><a href="/#mission">Mission</a><a href="/#plus">Plus</a><a href="/#speaks">Speaks</a><a href="/#how">How it runs</a>
       <a href="/admin">Backend ↗</a>
     </div>
-    <p>Concept v4 · sample programming for review · ATL, GA · est. 2025</p>
+    <p>Concept v5 · sample programming for review · ATL, GA · est. 2025</p>
   </div>
 </footer>
 
@@ -64,7 +64,7 @@ if(!post){
   const draft = post.status !== "published" ? '<span class="stamp red">Draft · not yet published</span>' : "";
   $("#postMain").innerHTML = `
   <header class="post-hero"><div class="wrap">
-    <div class="post-kicker"><span class="stamp">Atlanta Speaks</span><span class="stamp">${esc(post.date)}</span>${draft}</div>
+    <div class="post-kicker"><span class="stamp">Atlanta Speaks</span><span class="stamp">${esc(post.kind||"Opinion")}</span><span class="stamp">${esc(post.date)}</span>${draft}</div>
     <h1 class="post-title">${esc(post.title)}</h1>
     <div class="post-byline">
       ${post.img?`<img src="${post.img}" alt="Portrait for ${esc(post.name)}">`:""}
@@ -80,7 +80,7 @@ if(!post){
       <div class="post-pull">&ldquo;${esc(post.quote)}&rdquo;</div>
       <div class="side-box">
         <h4>About Atlanta Speaks</h4>
-        <p>Opinion pieces from the people who make this city sound like itself.</p>
+        <p>${post.source==="community"?"This piece was pitched by a member of the community and reviewed by the Speaks editor.":"This piece was commissioned by the Speaks editor."} Want to write one? <a href="/?pitch=1#speaks">Pitch the editor.</a></p>
       </div>
       <div class="side-box">
         <h4>On the calendar</h4>

@@ -24,6 +24,7 @@
       <a href="#plus" class="hideable">Plus</a>
       <a href="#backroom" class="br-link">Back Room</a>
       <a href="#speaks" class="hideable">Speaks</a>
+      <a href="#how" class="hideable">How it runs</a>
       <button class="nav-submit" onclick="openModal('submitModal')">Submit event ↗</button>
     </div>
   </div>
@@ -35,7 +36,7 @@
   <div class="hero-grid">
     <div class="hero-left">
       <div class="hero-topline">
-        <span class="mono-tag">ATL · GA · The culture's hometown</span>
+        <span class="mono-tag">ATL · GA · Every scene, one calendar</span>
         <span class="mono-tag" id="todayStamp">FRI 28.08.2026</span>
       </div>
       <h1 class="masthead d-h">
@@ -48,11 +49,12 @@
           Every panel, every listening session, every move. So nobody in this town ever says
           <em class="serif-i" style="color:var(--lime)">&ldquo;dang, I didn&rsquo;t even know&rdquo;</em> again.
         </p>
+        <p class="hero-for">For everyone who makes, books, records, plays or just loves music in Atlanta. Every genre, every neighborhood.</p>
       </div>
     </div>
     <div class="hero-right">
       <div class="hero-photo">
-        <img src="/img/crowd.webp" alt="Concert crowd in an Atlanta club, hands raised, black and white">
+        <img src="/img/crowd.webp" alt="A mixed crowd at a concert in an Atlanta club, hands raised, black and white">
         <span class="cap">Somewhere in ATL · last night</span>
       </div>
       <div class="nextup">
@@ -70,7 +72,7 @@
   <div class="wrap">
     <div class="cal-head rv">
       <h2 class="d-h">The <span class="serif-i">calendar</span></h2>
-      <p class="side">The heart of the platform. The community submits, the calendar tells the city. Color = type. Black = behind the code.</p>
+      <p class="side">The heart of the platform. The community submits, an editor reviews, the calendar tells the city. Color = type. Black = behind the code.</p>
     </div>
     <div class="legend rv" id="legendBar"></div>
     <div class="cal-shell grid-mode rv" id="calShell">
@@ -87,7 +89,7 @@
       <div class="cal-list" id="calList"></div>
       <div class="cal-empty" id="calEmpty">Nothing on the books. Yet.</div>
       <div class="cal-foot">
-        <p>Something missing? That's literally the problem we exist to solve.</p>
+        <p>Something missing? Submit it. Every listing is checked against <a href="#how" style="text-decoration:underline">five simple criteria</a> before it goes up.</p>
         <button onclick="openModal('submitModal')">Put it on the calendar ↗</button>
       </div>
     </div>
@@ -105,6 +107,7 @@
       <div class="man-copy rv">
         <p>Every week this city makes history, and half of it goes unseen. <strong>Even by the people making it.</strong> Deals close and nobody addresses the community. Festivals vanish and nobody explains why. Events collide because nobody knew.</p>
         <p>Unite Atlanta is not another organization. It's the infrastructure the scene never had: <strong>one calendar, one archive, one voice</strong>. Built by the community it serves, starting with music, starting now.</p>
+        <p>And it is for <strong>all of Atlanta&rsquo;s music community</strong>: hip-hop and R&amp;B, gospel, country, Latin, indie, jazz, classical, and the scenes that don&rsquo;t have a name yet. If it&rsquo;s music and it&rsquo;s Atlanta, it belongs on the calendar.</p>
       </div>
       <div class="mv-stack rv">
         <div class="mv-card" data-v="Proposal v1">
@@ -150,14 +153,14 @@
 <section id="plus">
   <div class="plus-grid">
     <div class="plus-photo">
-      <img src="/img/plusroom.webp" alt="Dim private listening session, black and white">
+      <img src="/img/plusroom.webp" alt="A group of music-industry friends talking at a private reception, black and white">
       <span class="stamp ph-tag">Members only</span>
       <div class="bigword">Plus</div>
     </div>
     <div class="plus-right">
       <p class="mono-tag" style="color:var(--paper-dim)">■ Membership</p>
-      <h2 class="d-h" style="margin-top:14px">Two doors.<br><span class="serif-i">One house.</span></h2>
-      <p class="intro">The calendar is for the whole city. The back room isn&rsquo;t. Plus keeps high-profile gatherings off the radar and on the calendar at the same time, protected by a code that rotates quarterly and moves hand to hand. Never posted.</p>
+      <h2 class="d-h" style="margin-top:14px">Open to all.<br><span class="serif-i">Plus by invitation.</span></h2>
+      <p class="intro"><strong style="color:var(--paper)">Unite Atlanta</strong> is free and open to everyone: the full public calendar, the journal and the weekly email. <strong style="color:var(--paper)">Unite Atlanta Plus</strong> is the invitation-only side. A code unlocks the Back Room, where private events are listed with their full address and RSVP. The code changes every quarter and is passed on in person, never posted.</p>
       <div class="tiers">
         <div class="tier">
           <h3>Unite Atlanta <span class="stamp">Open</span></h3>
@@ -202,7 +205,7 @@
       </div>
     </div>
     <div class="br-photo">
-      <img src="/img/backroom.webp" alt="Intimate listening session in a dark lounge, black and white">
+      <img src="/img/backroom.webp" alt="A mixed group at a private listening session in a dark lounge, black and white">
       <span class="cap">The listening, last quarter</span>
     </div>
   </div>
@@ -210,10 +213,42 @@
 
 <section id="speaks">
   <div class="wrap">
-    <p class="mono-tag rv" style="color:var(--paper-dim)">■ The journal · new voices weekly</p>
+    <p class="mono-tag rv" style="color:var(--paper-dim)">■ The journal · commissioned &amp; community voices</p>
     <h2 class="d-h rv" style="margin-top:14px">Atlanta <span class="serif-i">speaks.</span></h2>
     <p class="intro rv">Opinion pieces from the people who make this city sound like itself. Producers, promoters, executives, students, legends. What&rsquo;s popping, what&rsquo;s broken, and what Atlanta means to them.</p>
+    <div class="speaks-how rv">
+      <p>Some pieces are commissioned by the editor. Others are pitched by the community: opinions, event recaps and legacy stories. Every piece is reviewed before it runs.</p>
+      <button class="btn-lime" onclick="openModal('pitchModal')">Pitch a piece ↗</button>
+    </div>
     <div class="voices rv" id="voicesWrap"></div>
+    <div class="speaks-pager" id="speaksPager" style="display:none"></div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <p class="mono-tag rv" style="opacity:.6">■ The machine behind it · proposal v1</p>
+    <div class="how-head rv">
+      <h2 class="d-h">How it <span class="serif-i">runs.</span></h2>
+      <p class="side">A calendar is only as good as the people keeping it. This is who checks what, and what makes the cut.</p>
+    </div>
+    <div class="how-steps rv" id="howSteps"></div>
+    <div class="how-grid">
+      <div class="how-col rv">
+        <h3 class="d-h">What gets listed</h3>
+        <ol class="crit-list" id="howCriteria"></ol>
+      </div>
+      <div class="how-col rv">
+        <h3 class="d-h">How Atlanta Speaks works</h3>
+        <ul class="policy-list" id="howPolicy"></ul>
+      </div>
+    </div>
+    <div class="roles-head rv">
+      <h3 class="d-h">Who keeps it running</h3>
+      <span class="stamp">Four roles · owners to be decided</span>
+    </div>
+    <div class="roles rv" id="howRoles"></div>
+    <p class="how-note rv">Concept build: the roles, time estimates and criteria above are proposals for the team to confirm. One person can hold more than one role.</p>
   </div>
 </section>
 
@@ -243,10 +278,10 @@
   <div class="foot-mast" aria-hidden="true">UNITE<em>ATL</em>ANTA</div>
   <div class="foot-bar">
     <div class="fl">
-      <a href="#calendar">Calendar</a><a href="#mission">Mission</a><a href="#plus">Plus</a><a href="#speaks">Speaks</a>
+      <a href="#calendar">Calendar</a><a href="#mission">Mission</a><a href="#plus">Plus</a><a href="#speaks">Speaks</a><a href="#how">How it runs</a>
       <a href="/admin">Backend ↗</a>
     </div>
-    <p>Concept v4 · sample programming for review · ATL, GA · est. 2025</p>
+    <p>Concept v5 · sample programming for review · ATL, GA · est. 2025</p>
   </div>
 </footer>
 
@@ -271,15 +306,20 @@
     <button class="x" onclick="closeModal('submitModal')" aria-label="Close">✕</button>
     <p class="m-cat"><span>Submit an event</span></p>
     <h3>Put your move on the city&rsquo;s calendar.</h3>
-    <p class="m-desc">Submissions land with the Unite Atlanta team for review before publication. Choose Plus if the address should stay behind the code.</p>
+    <p class="m-desc">Every submission is reviewed by the calendar editor before it is listed. Choose Plus if the address should stay behind the code.</p>
+    <div class="crit-box">
+      <p class="crit-h">What gets listed</p>
+      <ol id="submitCriteria"></ol>
+    </div>
     <form id="submitForm">
       <div class="row">
         <label>Your name<input required name="name"></label>
         <label>Email<input required type="email" name="email"></label>
       </div>
+      <label>Organizer or organization<input required name="org" placeholder="Who is putting this on?"></label>
       <label>Event title<input required name="title"></label>
       <div class="row">
-        <label>Date<input required type="date" name="date" min="2026-08-28"></label>
+        <label>Date<input required type="date" name="date" id="subDate"></label>
         <label>Start time<input required type="time" name="time" value="19:00"></label>
       </div>
       <label>Venue<input required name="venue"></label>
@@ -291,11 +331,39 @@
       <label>Flyer / image<input type="file" id="subImg" accept="image/*"></label>
       <div class="up-preview" id="upPreview"><img id="upPreviewImg" alt="Upload preview"></div>
       <label>Tell us about it<textarea rows="3" name="desc"></textarea></label>
+      <label class="check"><input type="checkbox" required name="confirm"><span>This event is confirmed and meets the listing criteria above.</span></label>
       <button class="btn-ink" type="submit" id="subBtn">Send for review ↗</button>
     </form>
     <div class="form-done" id="submitDone">
       <p>Received.</p>
       <small id="submitDoneNote">The team reviews &amp; publishes within 48 hours</small>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="pitchModal" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button class="x" onclick="closeModal('pitchModal')" aria-label="Close">✕</button>
+    <p class="m-cat"><span>Atlanta Speaks</span><span>Pitch a piece</span></p>
+    <h3>Say it to the whole city.</h3>
+    <p class="m-desc">Send an idea or a full draft. The Speaks editor reads every pitch and replies either way. Opinion pieces, event recaps and legacy stories, 500 to 900 words.</p>
+    <form id="pitchForm">
+      <div class="row">
+        <label>Your name<input required name="name"></label>
+        <label>Email<input required type="email" name="email"></label>
+      </div>
+      <div class="row">
+        <label>What you do · where<input required name="role" placeholder="DJ · West End"></label>
+        <label>Type<select name="kind"><option>Opinion</option><option>Event recap</option><option>Legacy story</option></select></label>
+      </div>
+      <label>Working title<input required name="title"></label>
+      <label>The pitch, or the full draft<textarea required rows="5" name="pitch"></textarea></label>
+      <label>Link to your work (optional)<input type="url" name="link" placeholder="https://"></label>
+      <button class="btn-ink" type="submit">Send to the editor ↗</button>
+    </form>
+    <div class="form-done" id="pitchDone">
+      <p>Received.</p>
+      <small>The Speaks editor replies within two weeks</small>
     </div>
   </div>
 </div>
